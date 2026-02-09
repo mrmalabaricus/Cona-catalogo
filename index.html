@@ -9,7 +9,11 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="ConaApp">
-    <link rel="apple-touch-icon" href="https://www.conaprole.uy/themes/web/img/conaprole_logo.png">
+    
+    <!-- Referencia al icono local que subiste -->
+    <link rel="apple-touch-icon" href="icon.png">
+    <link rel="icon" type="image/png" href="icon.png">
+    
     <link rel="manifest" href="manifest.json">
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -108,7 +112,7 @@
                 <div class="flex justify-between items-center mb-4">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-xl bg-white shadow-sm border border-slate-100 flex items-center justify-center overflow-hidden">
-                            <img src="https://www.conaprole.uy/themes/web/img/conaprole_logo.png" class="w-8 h-8 object-contain">
+                            <img src="icon.png" onerror="this.src='https://www.conaprole.uy/themes/web/img/conaprole_logo.png'" class="w-8 h-8 object-contain">
                         </div>
                         <h1 class="text-lg font-black text-slate-800 tracking-tighter uppercase">Cona<span class="text-blue-600">App</span></h1>
                     </div>
