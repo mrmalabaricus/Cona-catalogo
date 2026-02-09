@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>ConaApp - Catálogo Digital 2026</title>
+    
+    <!-- PWA & iOS Optimization -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ConaApp">
+    <link rel="apple-touch-icon" href="https://www.conaprole.uy/themes/web/img/conaprole_logo.png">
+    <link rel="manifest" href="manifest.json">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
+        
+        :root {
+            --safe-top: env(safe-area-inset-top);
+            --safe-bottom: env(safe-area-inset-bottom);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            background-color: #f8fafc;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        #appScrollContainer {
+            height: 100%;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-top: var(--safe-top);
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+
+        .category-grid {
+            display: grid;
+            grid-auto-flow: column;
+            grid-template-rows: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+            padding: 4px 0;
+        }
+
+        .category-btn {
+            transition: all 0.2s ease;
+            border: 1px solid #e2e8f0;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: -0.025em;
+        }
+
+        .category-btn.active {
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .product-card {
+            transition: transform 0.2s ease;
+            cursor: pointer;
+        }
+        
+        .product-card:active {
+            transform: scale(0.96);
+        }
+
+        .img-blend {
+            mix-blend-mode: multiply;
+            object-fit: contain;
+        }
+
+        .modal-animate-in {
+            animation: modalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.9) translateY(20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        /* Loading Spinner */
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #1e40af;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div id="appScrollContainer">
+        <!-- HEADER -->
+        <header class="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-100">
+            <div class="px-4 pt-4 pb-2 max-w-7xl mx-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-white shadow-sm border border-slate-100 flex items-center justify-center overflow-hidden">
+                            <img src="https://www.conaprole.uy/themes/web/img/conaprole_logo.png" class="w-8 h-8 object-contain">
+                        </div>
+                        <h1 class="text-lg font-black text-slate-800 tracking-tighter uppercase">Cona<span class="text-blue-600">App</span></h1>
+                    </div>
+                    <button id="cartBtn" class="relative p-2.5 bg-slate-100 rounded-2xl text-slate-600 active:scale-90 transition-transform">
+                        <i class="fa-solid fa-clipboard-list text-xl"></i>
+                        <span id="cartCount" class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-black min-w-[18px] h-[18px] flex items-center justify-center rounded-full border-2 border-white hidden">0</span>
+                    </button>
+                </div>
+                
+                <div class="relative mb-3">
+                    <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="searchInput" placeholder="Buscar producto o SKU..." class="w-full bg-slate-100/50 border-2 border-transparent focus:border-blue-500/20 focus:bg-white rounded-2xl py-3 pl-11 pr-4 text-sm outline-none transition-all shadow-sm">
+                </div>
+            </div>
+
+            <!-- CATEGORIES GRID (2 ROWS) -->
+            <div class="overflow-x-auto no-scrollbar px-4 pb-3">
+                <div id="categoryList" class="category-grid"></div>
+            </div>
+            
+            <div id="subCategoryList" class="hidden flex overflow-x-auto px-4 py-3 space-x-2 no-scrollbar border-t border-slate-50"></div>
+        </header>
+
+        <!-- MAIN -->
+        <main class="p-4 max-w-7xl mx-auto pb-32">
+            <div id="loadingOverlay" class="flex flex-col items-center justify-center py-32">
+                <div class="loader mb-4"></div>
+                <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest animate-pulse">Sincronizando Catálogo...</p>
+            </div>
+
+            <div id="productGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"></div>
+            
+            <div id="emptyState" class="hidden flex flex-col items-center justify-center py-32 text-slate-300">
+                <i class="fa-solid fa-box-open text-5xl mb-4 opacity-20"></i>
+                <p class="font-bold text-sm uppercase tracking-tighter">No hay resultados</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- PRODUCT DETAIL MODAL -->
+    <div id="productModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[70] hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden modal-animate-in relative">
+            <button onclick="closeProductModal()" class="absolute top-5 right-5 w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center text-slate-800 shadow-sm z-10 active:scale-90 transition-transform">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            
+            <div class="bg-slate-50 p-6 flex items-center justify-center aspect-square overflow-hidden">
+                <img id="modalImg" src="" class="max-h-full object-contain img-blend">
+            </div>
+            
+            <div class="p-6">
+                <div class="mb-5">
+                    <span id="modalCategory" class="text-[9px] font-black uppercase tracking-widest text-blue-600 mb-1 block">CATEGORÍA</span>
+                    <h2 id="modalTitle" class="text-xl font-black text-slate-800 leading-tight mb-1 uppercase tracking-tighter">Nombre</h2>
+                    <p id="modalPres" class="text-slate-400 font-medium text-xs">Presentación</p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 mb-6">
+                    <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                        <p class="text-[9px] text-slate-400 uppercase font-black mb-0.5">EAN</p>
+                        <p id="modalEan" class="text-xs font-bold text-slate-700">-</p>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                        <p class="text-[9px] text-slate-400 uppercase font-black mb-0.5">Unidades/Caja</p>
+                        <p id="modalCaja" class="text-xs font-bold text-slate-700">-</p>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                        <p class="text-[9px] text-slate-400 uppercase font-black mb-0.5">Vida Útil</p>
+                        <p id="modalVida" class="text-xs font-bold text-slate-700">-</p>
+                    </div>
+                    <div class="bg-blue-50 p-3 rounded-2xl border border-blue-100">
+                        <p class="text-[9px] text-blue-400 uppercase font-black mb-0.5">Precio s/IVA</p>
+                        <p id="modalPrecio" class="text-base font-black text-blue-600">-</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <div class="flex-1 bg-slate-100 px-4 py-3 rounded-xl flex items-center justify-between">
+                        <span class="text-[9px] font-black text-slate-400 uppercase">SKU</span>
+                        <span id="modalSku" class="text-xs font-mono font-bold text-slate-800 tracking-wider">0000</span>
+                    </div>
+                    <button id="modalAddBtn" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-black shadow-lg shadow-blue-100 active:scale-95 transition-transform uppercase text-xs">
+                        Añadir
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CART MODAL -->
+    <div id="cartModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] hidden flex items-end justify-center p-4">
+        <div class="bg-white w-full max-w-lg rounded-[2.5rem] max-h-[80vh] flex flex-col shadow-2xl overflow-hidden mb-4">
+            <div class="p-5 flex justify-between items-center border-b border-slate-50">
+                <h2 class="text-lg font-black text-slate-800">Resumen del Pedido</h2>
+                <button onclick="toggleCart()" class="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-400">&times;</button>
+            </div>
+            <div id="cartItems" class="flex-1 overflow-y-auto p-5 space-y-3"></div>
+            <div class="p-5 bg-slate-50 border-t border-slate-100 pb-[calc(1.5rem+var(--safe-bottom))]">
+                <button onclick="sendWhatsApp()" class="w-full bg-[#25D366] text-white py-4 rounded-2xl font-black text-base flex items-center justify-center gap-3 shadow-lg shadow-green-100 active:scale-95 transition-transform">
+                    <i class="fa-brands fa-whatsapp text-xl"></i> Enviar por WhatsApp
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT7_JhOmdO-PBK8zFpyauEBG4yG3mDuJAYjBkBes_49anrFxdCqemKm4_HWsgMufJAeksStTZr-Y2AL/pub?output=csv';
+
+        const COLORS = ['#2563eb', '#db2777', '#059669', '#7c3aed', '#ea580c', '#0891b2', '#dc2626', '#4f46e5', '#16a34a', '#9333ea'];
+        
+        let products = [];
+        let cart = [];
+        let currentCat = 'TODOS';
+        let currentSubCat = 'TODAS';
+        let categoryColorMap = {'TODOS': '#1e293b'};
+
+        async function init() {
+            try {
+                const response = await fetch(`${CSV_URL}&t=${Date.now()}`);
+                const data = await response.text();
+                parseCSV(data);
+                document.getElementById('loadingOverlay').classList.add('hidden');
+                generateColorMap();
+                renderCategories();
+                applyFilters();
+            } catch (e) { console.error(e); }
+        }
+
+        function parseCSV(csv) {
+            const lines = csv.split(/\r?\n/);
+            products = lines.slice(1).map(line => {
+                const v = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                const clean = s => s ? s.replace(/^"|"$/g, '').trim() : '';
+                return {
+                    marca: clean(v[0]), subcat: clean(v[1]), nombre: clean(v[2]),
+                    presentacion: clean(v[3]), sku: clean(v[4]), 
+                    img: clean(v[5]) || 'https://via.placeholder.com/400x400?text=Sin+Imagen',
+                    ean: clean(v[6]), caja: clean(v[7]), vida: clean(v[8]), precio: clean(v[9])
+                };
+            }).filter(p => p.nombre && p.nombre.length > 1);
+        }
+
+        function generateColorMap() {
+            const cats = [...new Set(products.map(p => p.marca.toUpperCase()))].sort();
+            cats.forEach((cat, i) => categoryColorMap[cat] = COLORS[i % COLORS.length]);
+        }
+
+        function renderCategories() {
+            const cats = ['TODOS', ...Object.keys(categoryColorMap).filter(k => k !== 'TODOS').sort()];
+            document.getElementById('categoryList').innerHTML = cats.map(c => {
+                const active = c === currentCat;
+                const color = categoryColorMap[c];
+                return `<button onclick="selectCategory('${c}')" style="${active ? `background-color:${color}; border-color:${color};` : `background-color:white;`}" class="category-btn px-4 py-2 rounded-xl whitespace-nowrap ${active ? 'active text-white' : 'text-slate-500'}">${c}</button>`;
+            }).join('');
+        }
+
+        function selectCategory(cat) {
+            currentCat = cat.toUpperCase();
+            currentSubCat = 'TODAS';
+            renderCategories();
+            renderSubCategories();
+            applyFilters();
+        }
+
+        function renderSubCategories() {
+            const container = document.getElementById('subCategoryList');
+            if (currentCat === 'TODOS') return container.classList.add('hidden');
+            const subSet = new Set();
+            products.forEach(p => { if (p.marca.toUpperCase() === currentCat && p.subcat) subSet.add(p.subcat.toUpperCase()); });
+            const subs = ['TODAS', ...Array.from(subSet).sort()];
+            if (subs.length <= 1) return container.classList.add('hidden');
+            const color = categoryColorMap[currentCat];
+            container.classList.remove('hidden');
+            container.innerHTML = subs.map(s => {
+                const active = s === currentSubCat;
+                return `<button onclick="selectSubCategory('${s}')" style="${active ? `color:${color}; border-color:${color}40; background-color:${color}10;` : `color:#94a3b8;`}" class="border border-transparent px-4 py-1.5 rounded-lg text-[10px] font-black uppercase whitespace-nowrap transition-all">${s}</button>`;
+            }).join('');
+        }
+
+        function selectSubCategory(sub) {
+            currentSubCat = sub.toUpperCase();
+            renderSubCategories();
+            applyFilters();
+        }
+
+        function applyFilters() {
+            const term = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = products.filter(p => {
+                const mCat = currentCat === 'TODOS' || p.marca.toUpperCase() === currentCat;
+                const mSub = currentSubCat === 'TODAS' || (p.subcat || "").toUpperCase() === currentSubCat;
+                const mSearch = p.nombre.toLowerCase().includes(term) || p.sku.toLowerCase().includes(term);
+                return mCat && mSub && mSearch;
+            });
+            renderProducts(filtered);
+        }
+
+        function renderProducts(items) {
+            const grid = document.getElementById('productGrid');
+            grid.innerHTML = items.map(p => {
+                const color = categoryColorMap[p.marca.toUpperCase()] || '#1e293b';
+                return `
+                    <div onclick="openProductModal('${p.sku}')" class="bg-white rounded-[1.8rem] p-2.5 shadow-sm border border-slate-100 flex flex-col h-full product-card">
+                        <div class="relative aspect-square bg-slate-50 rounded-[1.4rem] mb-2.5 overflow-hidden flex items-center justify-center">
+                            <img src="${p.img}" class="w-full h-full img-blend p-3" loading="lazy">
+                        </div>
+                        <div class="px-1 flex flex-col flex-1">
+                            <h3 class="text-[11px] font-bold text-slate-800 leading-tight line-clamp-2 mb-0.5 uppercase tracking-tighter">${p.nombre}</h3>
+                            <p class="text-[9px] text-slate-400 font-medium mb-2">${p.presentacion}</p>
+                            <div class="flex items-center justify-between mt-auto">
+                                <span class="text-[12px] font-black text-blue-600 tracking-tighter">$${p.precio}</span>
+                                <button onclick="event.stopPropagation(); addToCart('${p.sku}')" style="background-color:${color}" class="text-white w-8 h-8 rounded-lg flex items-center justify-center shadow-md active:scale-90 transition-transform">
+                                    <i class="fa-solid fa-plus text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            document.getElementById('emptyState').classList.toggle('hidden', items.length > 0);
+        }
+
+        function openProductModal(sku) {
+            const p = products.find(x => x.sku === sku);
+            if (!p) return;
+            document.getElementById('modalImg').src = p.img;
+            document.getElementById('modalTitle').innerText = p.nombre;
+            document.getElementById('modalCategory').innerText = p.subcat || p.marca;
+            document.getElementById('modalPres').innerText = p.presentacion;
+            document.getElementById('modalEan').innerText = p.ean || 'S/D';
+            document.getElementById('modalCaja').innerText = p.caja + ' U.';
+            document.getElementById('modalVida').innerText = p.vida || '-';
+            document.getElementById('modalPrecio').innerText = '$' + p.precio;
+            document.getElementById('modalSku').innerText = p.sku;
+            const color = categoryColorMap[p.marca.toUpperCase()] || '#1e293b';
+            document.getElementById('modalAddBtn').style.backgroundColor = color;
+            document.getElementById('modalAddBtn').onclick = () => { addToCart(p.sku); closeProductModal(); };
+            document.getElementById('productModal').classList.remove('hidden');
+        }
+
+        function closeProductModal() { document.getElementById('productModal').classList.add('hidden'); }
+
+        function addToCart(id) {
+            const p = products.find(x => x.sku === id);
+            const ex = cart.find(x => x.sku === id);
+            if(ex) ex.qty++; else cart.push({...p, qty: 1});
+            updateCart();
+        }
+
+        function updateCart() {
+            const count = cart.reduce((a, b) => a + b.qty, 0);
+            const badge = document.getElementById('cartCount');
+            badge.innerText = count;
+            badge.classList.toggle('hidden', count === 0);
+            document.getElementById('cartItems').innerHTML = cart.length === 0 ? 
+                '<p class="text-center py-8 text-slate-400 font-bold text-xs uppercase">Carrito vacío</p>' :
+                cart.map(i => `
+                    <div class="flex items-center justify-between bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                        <div class="flex items-center gap-3">
+                            <img src="${i.img}" class="w-10 h-10 bg-white rounded-lg object-contain p-1 shadow-sm">
+                            <div>
+                                <p class="text-[10px] font-bold text-slate-800 line-clamp-1 uppercase">${i.nombre}</p>
+                                <p class="text-[9px] text-slate-400 font-mono">$${i.precio} | SKU:${i.sku}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="changeQty('${i.sku}', -1)" class="w-7 h-7 flex items-center justify-center bg-white rounded-lg border border-slate-100 shadow-sm">-</button>
+                            <span class="text-xs font-black w-4 text-center">${i.qty}</span>
+                            <button onclick="changeQty('${i.sku}', 1)" class="w-7 h-7 flex items-center justify-center bg-white rounded-lg border border-slate-100 shadow-sm">+</button>
+                        </div>
+                    </div>
+                `).join('');
+        }
+
+        function changeQty(id, d) {
+            const idx = cart.findIndex(x => x.sku === id);
+            cart[idx].qty += d;
+            if(cart[idx].qty <= 0) cart.splice(idx, 1);
+            updateCart();
+        }
+
+        function toggleCart() { document.getElementById('cartModal').classList.toggle('hidden'); }
+        
+        function sendWhatsApp() {
+            if(cart.length === 0) return;
+            let m = "🛒 *CONAAPP - NUEVO PEDIDO*\n\n";
+            cart.forEach(i => m += `✅ *${i.nombre.toUpperCase()}*\n   Cant: ${i.qty} | SKU: ${i.sku}\n   Precio s/IVA: $${i.precio}\n\n`);
+            window.open(`https://wa.me/?text=${encodeURIComponent(m)}`, '_blank');
+        }
+
+        window.onclick = (e) => { if (e.target.id == 'productModal') closeProductModal(); }
+        document.getElementById('searchInput').addEventListener('input', applyFilters);
+        document.getElementById('cartBtn').addEventListener('click', toggleCart);
+        init();
+    </script>
+</body>
+</html>
