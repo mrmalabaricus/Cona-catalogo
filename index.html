@@ -10,10 +10,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Catálogo2026">
     
-    <!-- Referencia al icono local que subiste -->
     <link rel="apple-touch-icon" href="icon.png">
     <link rel="icon" type="image/png" href="icon.png">
-    
     <link rel="manifest" href="manifest.json">
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -68,13 +66,46 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
-        .product-card {
-            transition: transform 0.2s ease;
-            cursor: pointer;
+        /* 3D Flip Card Styles */
+        .flip-container {
+            perspective: 1000px;
+            width: 100%;
+            max-width: 400px;
         }
-        
-        .product-card:active {
-            transform: scale(0.96);
+
+        .flip-inner {
+            position: relative;
+            width: 100%;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-style: preserve-3d;
+        }
+
+        .flip-container.is-flipped .flip-inner {
+            transform: rotateY(180deg);
+        }
+
+        .flip-front, .flip-back {
+            position: absolute;
+            width: 100%;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            border-radius: 2.5rem;
+            background: white;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        .flip-front {
+            position: relative;
+            z-index: 2;
+        }
+
+        .flip-back {
+            transform: rotateY(180deg);
+            z-index: 1;
+            height: 100%;
+            top: 0;
+            left: 0;
         }
 
         .img-blend {
@@ -82,16 +113,6 @@
             object-fit: contain;
         }
 
-        .modal-animate-in {
-            animation: modalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        @keyframes modalIn {
-            from { opacity: 0; transform: scale(0.9) translateY(20px); }
-            to { opacity: 1; transform: scale(1) translateY(0); }
-        }
-
-        /* Loading Spinner */
         .loader {
             border: 3px solid #f3f3f3;
             border-top: 3px solid #1e40af;
@@ -128,7 +149,6 @@
                 </div>
             </div>
 
-            <!-- CATEGORIES GRID (2 ROWS) -->
             <div class="overflow-x-auto no-scrollbar px-4 pb-3">
                 <div id="categoryList" class="category-grid"></div>
             </div>
@@ -152,52 +172,100 @@
         </main>
     </div>
 
-    <!-- PRODUCT DETAIL MODAL -->
+    <!-- PRODUCT DETAIL MODAL WITH FLIP -->
     <div id="productModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[70] hidden flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden modal-animate-in relative">
-            <button onclick="closeProductModal()" class="absolute top-5 right-5 w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center text-slate-800 shadow-sm z-10 active:scale-90 transition-transform">
-                <i class="fa-solid fa-xmark text-lg"></i>
-            </button>
-            
-            <div class="bg-slate-50 p-6 flex items-center justify-center aspect-square overflow-hidden">
-                <img id="modalImg" src="" class="max-h-full object-contain img-blend">
-            </div>
-            
-            <div class="p-6">
-                <div class="mb-5">
-                    <span id="modalCategory" class="text-[9px] font-black uppercase tracking-widest text-blue-600 mb-1 block">CATEGORÍA</span>
-                    <h2 id="modalTitle" class="text-xl font-black text-slate-800 leading-tight mb-1 uppercase tracking-tighter">Nombre</h2>
-                    <p id="modalPres" class="text-slate-400 font-medium text-xs">Presentación</p>
-                </div>
-
-                <div class="grid grid-cols-2 gap-3 mb-6">
-                    <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                        <p class="text-[9px] text-slate-400 uppercase font-black mb-0.5">EAN</p>
-                        <p id="modalEan" class="text-xs font-bold text-slate-700">-</p>
-                    </div>
-                    <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                        <p class="text-[9px] text-slate-400 uppercase font-black mb-0.5">Unidades/Caja</p>
-                        <p id="modalCaja" class="text-xs font-bold text-slate-700">-</p>
-                    </div>
-                    <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                        <p class="text-[9px] text-slate-400 uppercase font-black mb-0.5">Vida Útil</p>
-                        <p id="modalVida" class="text-xs font-bold text-slate-700">-</p>
-                    </div>
-                    <div class="bg-blue-50 p-3 rounded-2xl border border-blue-100">
-                        <p class="text-[9px] text-blue-400 uppercase font-black mb-0.5">Precio s/IVA</p>
-                        <p id="modalPrecio" class="text-base font-black text-blue-600">-</p>
-                    </div>
-                </div>
-
-                <div class="flex items-center gap-3">
-                    <div class="flex-1 bg-slate-100 px-4 py-3 rounded-xl flex items-center justify-between">
-                        <span class="text-[9px] font-black text-slate-400 uppercase">SKU</span>
-                        <span id="modalSku" class="text-xs font-mono font-bold text-slate-800 tracking-wider">0000</span>
-                    </div>
-                    <button id="modalAddBtn" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-black shadow-lg shadow-blue-100 active:scale-95 transition-transform uppercase text-xs">
-                        Añadir
+        <div id="flipContainer" class="flip-container">
+            <div class="flip-inner">
+                
+                <!-- FRONT SIDE (Current Info) -->
+                <div class="flip-front">
+                    <button onclick="closeProductModal()" class="absolute top-5 right-5 w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center text-slate-800 shadow-sm z-10 active:scale-90 transition-transform">
+                        <i class="fa-solid fa-xmark text-lg"></i>
                     </button>
+                    
+                    <button onclick="flipCard()" class="absolute top-5 left-5 px-3 py-1.5 bg-blue-600/10 backdrop-blur rounded-full flex items-center gap-2 text-blue-600 z-10 active:scale-90 transition-transform">
+                        <i class="fa-solid fa-rotate text-xs"></i>
+                        <span class="text-[9px] font-black uppercase tracking-widest">Planograma</span>
+                    </button>
+                    
+                    <div class="bg-slate-50 p-6 flex items-center justify-center aspect-square overflow-hidden">
+                        <img id="modalImg" src="" class="max-h-full object-contain img-blend">
+                    </div>
+                    
+                    <div class="p-6">
+                        <div class="mb-5">
+                            <span id="modalCategory" class="text-[9px] font-black uppercase tracking-widest text-blue-600 mb-1 block">CATEGORÍA</span>
+                            <h2 id="modalTitle" class="text-xl font-black text-slate-800 leading-tight mb-1 uppercase tracking-tighter">Nombre</h2>
+                            <p id="modalPres" class="text-slate-400 font-medium text-xs">Presentación</p>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3 mb-6">
+                            <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                                <p class="text-[9px] text-slate-400 uppercase font-black mb-0.5">EAN</p>
+                                <p id="modalEan" class="text-xs font-bold text-slate-700">-</p>
+                            </div>
+                            <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                                <p class="text-[9px] text-slate-400 uppercase font-black mb-0.5">Unidades/Caja</p>
+                                <p id="modalCaja" class="text-xs font-bold text-slate-700">-</p>
+                            </div>
+                            <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                                <p class="text-[9px] text-slate-400 uppercase font-black mb-0.5">Vida Útil</p>
+                                <p id="modalVida" class="text-xs font-bold text-slate-700">-</p>
+                            </div>
+                            <div class="bg-blue-50 p-3 rounded-2xl border border-blue-100">
+                                <p class="text-[9px] text-blue-400 uppercase font-black mb-0.5">Precio s/IVA</p>
+                                <p id="modalPrecio" class="text-base font-black text-blue-600">-</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-3">
+                            <div class="flex-1 bg-slate-100 px-4 py-3 rounded-xl flex items-center justify-between">
+                                <span class="text-[9px] font-black text-slate-400 uppercase">SKU</span>
+                                <span id="modalSku" class="text-xs font-mono font-bold text-slate-800 tracking-wider">0000</span>
+                            </div>
+                            <button id="modalAddBtn" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-black shadow-lg shadow-blue-100 active:scale-95 transition-transform uppercase text-xs">
+                                Añadir
+                            </button>
+                        </div>
+                        <p class="text-center text-[8px] text-slate-300 font-black uppercase mt-4 tracking-widest">Desliza para ver ubicación</p>
+                    </div>
                 </div>
+
+                <!-- BACK SIDE (Planogram) -->
+                <div class="flip-back">
+                    <div class="p-6 h-full flex flex-col">
+                        <div class="flex justify-between items-center mb-6">
+                            <button onclick="flipCard()" class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-800 active:scale-90 transition-transform">
+                                <i class="fa-solid fa-arrow-left"></i>
+                            </button>
+                            <h3 class="text-xs font-black text-slate-800 uppercase tracking-widest">Ubicación en Góndola</h3>
+                            <div class="w-10"></div>
+                        </div>
+                        
+                        <div class="flex-1 bg-slate-100 rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center p-6 text-center relative overflow-hidden">
+                            <!-- Aquí iría la imagen del planograma -->
+                            <div id="planogramPlaceholder" class="w-full h-full flex flex-col items-center justify-center">
+                                <i class="fa-solid fa-map-location-dot text-4xl text-slate-300 mb-4"></i>
+                                <p class="text-[10px] font-black text-slate-400 uppercase px-8">Planograma de exhibición sugerida para este producto</p>
+                                
+                                <!-- Simulación de góndola -->
+                                <div class="mt-8 w-full space-y-2 opacity-20">
+                                    <div class="h-4 bg-slate-400 rounded-full w-3/4 mx-auto"></div>
+                                    <div class="h-4 bg-slate-400 rounded-full w-full"></div>
+                                    <div class="h-12 bg-blue-600 rounded-lg w-1/4 mx-auto border-2 border-blue-800"></div>
+                                    <div class="h-4 bg-slate-400 rounded-full w-full"></div>
+                                </div>
+                            </div>
+                            <img id="planogramImg" src="" class="absolute inset-0 w-full h-full object-cover hidden">
+                        </div>
+
+                        <div class="mt-6 p-4 bg-blue-50 rounded-2xl">
+                            <p class="text-[9px] font-black text-blue-600 uppercase mb-1">Nota de Merchandising</p>
+                            <p class="text-[10px] text-blue-800 font-medium">Mantener siempre a la altura de los ojos según el manual de marca 2026.</p>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
@@ -228,6 +296,10 @@
         let currentCat = 'TODOS';
         let currentSubCat = 'TODAS';
         let categoryColorMap = {'TODOS': '#1e293b'};
+        
+        // Touch states for swipe
+        let touchStartX = 0;
+        let touchEndX = 0;
 
         async function init() {
             try {
@@ -238,6 +310,7 @@
                 generateColorMap();
                 renderCategories();
                 applyFilters();
+                setupSwipeHandlers();
             } catch (e) { console.error(e); }
         }
 
@@ -337,6 +410,7 @@
         function openProductModal(sku) {
             const p = products.find(x => x.sku === sku);
             if (!p) return;
+            document.getElementById('flipContainer').classList.remove('is-flipped');
             document.getElementById('modalImg').src = p.img;
             document.getElementById('modalTitle').innerText = p.nombre;
             document.getElementById('modalCategory').innerText = p.subcat || p.marca;
@@ -346,13 +420,51 @@
             document.getElementById('modalVida').innerText = p.vida || '-';
             document.getElementById('modalPrecio').innerText = '$' + p.precio;
             document.getElementById('modalSku').innerText = p.sku;
+            
             const color = categoryColorMap[p.marca.toUpperCase()] || '#1e293b';
             document.getElementById('modalAddBtn').style.backgroundColor = color;
             document.getElementById('modalAddBtn').onclick = () => { addToCart(p.sku); closeProductModal(); };
+            
+            // Simular carga de planograma (podría ser una URL en el CSV en el futuro)
+            // document.getElementById('planogramImg').src = p.planograma_url;
+            
             document.getElementById('productModal').classList.remove('hidden');
         }
 
         function closeProductModal() { document.getElementById('productModal').classList.add('hidden'); }
+
+        function flipCard() {
+            document.getElementById('flipContainer').classList.toggle('is-flipped');
+        }
+
+        // Swipe Gestures Logic
+        function setupSwipeHandlers() {
+            const container = document.getElementById('flipContainer');
+            container.addEventListener('touchstart', e => {
+                touchStartX = e.changedTouches[0].screenX;
+            }, {passive: true});
+
+            container.addEventListener('touchend', e => {
+                touchEndX = e.changedTouches[0].screenX;
+                handleGesture();
+            }, {passive: true});
+        }
+
+        function handleGesture() {
+            const delta = touchEndX - touchStartX;
+            const threshold = 50;
+            const container = document.getElementById('flipContainer');
+            const isFlipped = container.classList.contains('is-flipped');
+
+            // Deslizar a la izquierda (delta negativo) para girar al dorso
+            if (delta < -threshold && !isFlipped) {
+                flipCard();
+            } 
+            // Deslizar a la derecha para volver al frente
+            else if (delta > threshold && isFlipped) {
+                flipCard();
+            }
+        }
 
         function addToCart(id) {
             const p = products.find(x => x.sku === id);
